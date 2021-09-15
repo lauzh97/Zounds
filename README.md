@@ -3,13 +3,9 @@ A music bot for Discord that plays youtube videos in voice channels
 
 ## Requirements
 1. Node.js [[download here]](https://nodejs.org/en/)
-2. Discord.js 
+2. Discord.js & dependencies 
 ```
-    npm install discord.js
-```
-3. Discord.js dependencies 
-```
-    npm install discord.js @discordjs/rest discord-api-types
+    npm install discord.js @discordjs/builders @discordjs/rest discord-api-types
 ```
 
 ## Important
