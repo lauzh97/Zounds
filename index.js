@@ -1,12 +1,12 @@
 const { Client, Intents } = require('discord.js');
 const { token } = require('./config.json');
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, 'GUILD_VOICE_STATES'] });
-const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
+const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, StreamType, AudioPlayerStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core-discord');
 const ytsr = require('ytsr');
 const ytpl = require('ytpl');
 
-const queue = new Map();
+const queue = [];
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -32,6 +32,7 @@ client.on('interactionCreate', async interaction => {
         case 'resume':
             break;
         case 'skip':
+            skip(interaction);
             break;
         case 'queue':
             break;
@@ -48,12 +49,12 @@ client.on('interactionCreate', async interaction => {
 	}
 });
 
-function ping(interaction) {
+async function ping(interaction) {
     return interaction.reply("Pong!");
 }
 
 // TODO: change to use embed msg instead
-function help(interaction) {
+async function help(interaction) {
     helpTxt  = "```\n";
     helpTxt += "help                - shows this list.\n";
     helpTxt += "ping                - Pong!\n";
@@ -71,26 +72,51 @@ function help(interaction) {
     return interaction.reply(helpTxt);
 }
 
-function play(interaction) {
+async function play(interaction) {
     const channel = interaction.member.voice.channel;
+    if(!channel) {
+        return interaction.reply("Please join a voice channel first.");
+    }
 
     const connection = joinVoiceChannel({
         channelId: channel.id,
         guildId: channel.guild.id,
         adapterCreator: channel.guild.voiceAdapterCreator,
     });
+    
+    const url = interaction.options.get("url").value;
+    const resource = createAudioResource(await(ytdl(url)), { inputType: StreamType.Opus });
+    const player = createAudioPlayer();
 
-    url = interaction.options.get("url").value;
+    if (queue.length == 0) {
+        queue.push(resource);
+        player.play(queue[0]);
+        connection.subscribe(player);
+    } else {
+        queue.push(resource);
+    }
+
+    player.on(AudioPlayerStatus.Idle, () => {
+        queue.shift();
+        if (queue.length > 0) {
+            player.play(queue[0]);
+        }
+    });
 
     return interaction.reply("Now playing - ");
 }
 
-function disconnect(interaction) {
+async function skip(interaction) {
+    
+}
+
+async function disconnect(interaction) {
     const channel = interaction.member.voice.channel;
 
     const connection = getVoiceConnection(channel.guild.id);
     if (connection) {
         connection.destroy();
+        console.log("Disconnected from channel.");
         return interaction.reply("Disconnected.");
     }
 
