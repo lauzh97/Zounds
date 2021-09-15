@@ -26,6 +26,7 @@ const commands = [
       option.setName('x')
       .setDescription('Position in queue.')
       .setRequired(true)),
+	new SlashCommandBuilder().setName('disconnect').setDescription('Disconnect the bot from the channel.')
 ]
 	.map(command => command.toJSON());
 

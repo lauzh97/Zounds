@@ -1,6 +1,12 @@
 const { Client, Intents } = require('discord.js');
 const { token } = require('./config.json');
-const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, 'GUILD_VOICE_STATES'] });
+const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
+const ytdl = require('ytdl-core-discord');
+const ytsr = require('ytsr');
+const ytpl = require('ytpl');
+
+const queue = new Map();
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -33,6 +39,9 @@ client.on('interactionCreate', async interaction => {
             break;
         case 'remove':
             break;
+        case 'disconnect':
+            disconnect(interaction);
+            break;
         default:
             await interaction.reply("Unrecognized command, /help for a list of available commands.");
             break;
@@ -56,14 +65,36 @@ function help(interaction) {
     helpTxt += "queue               - list all the audio to be played.\n";
     helpTxt += "clear               - clear the existing queue.\n";
     helpTxt += "remove [x]          - remove the audio in the x position of the queue.\n";
+    helpTxt += "disconnect          - disconnect the bot from the channel.";
     helpTxt += "```";
 
     return interaction.reply(helpTxt);
 }
 
 function play(interaction) {
-    // console.log(interaction.options.get("url").value);
-    return interaction.reply("no function yet.");
+    const channel = interaction.member.voice.channel;
+
+    const connection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: channel.guild.id,
+        adapterCreator: channel.guild.voiceAdapterCreator,
+    });
+
+    url = interaction.options.get("url").value;
+
+    return interaction.reply("Now playing - ");
+}
+
+function disconnect(interaction) {
+    const channel = interaction.member.voice.channel;
+
+    const connection = getVoiceConnection(channel.guild.id);
+    if (connection) {
+        connection.destroy();
+        return interaction.reply("Disconnected.");
+    }
+
+    return interaction.reply("Not connected in the first place.");
 }
 
 client.login(token);
