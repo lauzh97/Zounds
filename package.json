@@ -1,0 +1,21 @@
+{
+  "name": "zounds",
+  "version": "1.0.0",
+  "description": "A music bot for Discord that plays youtube videos in voice channels",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lauzh97/Zounds.git"
+  },
+  "author": "Zihao",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lauzh97/Zounds/issues"
+  },
+  "homepage": "https://github.com/lauzh97/Zounds#readme",
+  "dependencies": {
+    "@discordjs/rest": "^0.1.0-canary.0",
+    "discord-api-types": "^0.23.1",
+    "discord.js": "^13.1.0"
+  }
+}
