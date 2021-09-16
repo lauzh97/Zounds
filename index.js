@@ -1,4 +1,4 @@
-const { Client, Intents } = require('discord.js');
+const { Client, Intents, MessageEmbed } = require('discord.js');
 const { token } = require('./config.json');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, StreamType, AudioPlayerStatus } = require('@discordjs/voice');
@@ -32,6 +32,7 @@ client.on('interactionCreate', async interaction => {
             await play(interaction);
             break;
         case 'search':
+            await search(interaction);
             break;
         case 'pause':
             await pause(interaction);
@@ -97,15 +98,21 @@ async function play(interaction) {
         adapterCreator: channel.guild.voiceAdapterCreator,
     });
     
-    const url = interaction.options.get("url").value;
-    const validatation = ytdl.validateURL(url);
+    const input = interaction.options.get("url").value;
+    const validatation = ytdl.validateURL(input);
+    const result = [];
     let timeout;
 
     if(validatation) {
-        const resource = createAudioResource(await ytdl(url).catch(e => console.log(e)), { filter: 'audioonly', inputType: StreamType.Opus, highWaterMark: 1<<25 }, { highWaterMark: 1 });
+        const resource = createAudioResource(await ytdl(input), { filter: 'audioonly', inputType: StreamType.Opus, highWaterMark: 1<<25 }, { highWaterMark: 1 });
         audioQueue.push(resource);
     } else {
-        // TODO: implement keyword search here
+        result.splice(0, result.length);
+        const search = await ytsr(input, { limit: 1 });
+        result.push({ title: search.items[0].title, url: search.items[0].url });
+        
+        const resource = createAudioResource(await ytdl(result[0].url), { filter: 'audioonly', inputType: StreamType.Opus, highWaterMark: 1<<25 }, { highWaterMark: 1 });
+        audioQueue.push(resource);
     }
 
     if (audioQueue.length - 1 == 0) {
@@ -141,12 +148,42 @@ async function play(interaction) {
 
     if (validatation) {
         if (audioQueue.length - 1 == 0) {
-            return interaction.reply(`Now playing - [${(await ytdl.getBasicInfo(url)).videoDetails.title}](${url})`);
+            return interaction.reply(`Now playing - [${(await ytdl.getBasicInfo(input)).videoDetails.title}](${input})`);
         } else {
-            return interaction.reply(`Added to queue - [${(await ytdl.getBasicInfo(url)).videoDetails.title}](${hideLinkEmbed(url)})`);
+            return interaction.reply(`Added to queue - [${(await ytdl.getBasicInfo(input)).videoDetails.title}](${hideLinkEmbed(input)})`);
         }
     } else {
-        return interaction.reply(`Now playing - `);
+        if (audioQueue.length - 1 == 0) {
+            return interaction.reply(`Now playing - [${result[0].title}](${result[0].url})`);
+        } else {
+            return interaction.reply(`Added to queue - [${result[0].title}](${hideLinkEmbed(result[0].url)})`);
+        }
+    }
+}
+
+async function search(interaction) {
+    const keyword = interaction.options.get("keyword").value;
+    const search = await ytsr(keyword, { limit: 10 });
+    
+    const results = [];
+    search.items.forEach(s => {
+        results.push({ title: s.title, author: s.author.name, url: s.url, timestamp: s.duration });
+    });
+
+    if (results.length > 0) {
+        const channel = client.channels.cache.get(interaction.channelId);
+        const embed = new MessageEmbed()
+            .setAuthor(interaction.user.username, interaction.user.displayAvatarURL())
+    
+        results.forEach((r, i) => {
+            embed.addField("\u200B", `${i+1}. [${r.title} by ${r.author}](${r.url}) **(${r.timestamp})**`);
+        });
+    
+        channel.send({ embeds: [embed] });
+    
+        return interaction.reply(`Showing results for "${keyword}`);
+    } else {
+        return interaction.reply(`No results found for "${keyword}"!`);
     }
 }
 
@@ -171,14 +208,17 @@ async function skip(interaction) {
 
 async function pause(interaction) {
 
+    return interaction.reply("Not yet implemented.");
 }
 
 async function resume(interaction) {
 
+    return interaction.reply("Not yet implemented.");
 }
 
 async function queue(interaction) {
 
+    return interaction.reply("Not yet implemented.");
 }
 
 async function clear(interaction) {

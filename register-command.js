@@ -8,8 +8,8 @@ const commands = [
 	new SlashCommandBuilder().setName('help').setDescription('Replies a list of available commands.'),
 	new SlashCommandBuilder().setName('play').setDescription('Plays the Youtube video as audio in voice channel.')
     .addStringOption(option => 
-      option.setName('url')
-        .setDescription('Url of the Youtube video.')
+      option.setName('input')
+        .setDescription('URL or keyword of the Youtube video.')
         .setRequired(true)),
   new SlashCommandBuilder().setName('search').setDescription('Replies 10 results from searching Youtube.')
     .addStringOption(option =>
