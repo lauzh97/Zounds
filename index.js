@@ -2,11 +2,15 @@ const { Client, Intents } = require('discord.js');
 const { token } = require('./config.json');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, StreamType, AudioPlayerStatus } = require('@discordjs/voice');
+const { hideLinkEmbed } = require('@discordjs/builders');
 const ytdl = require('ytdl-core-discord');
 const ytsr = require('ytsr');
 const ytpl = require('ytpl');
 
-const queue = [];
+global.AbortController = require('abort-controller');
+
+const player = createAudioPlayer();
+const audioQueue = [];
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -27,21 +31,27 @@ client.on('interactionCreate', async interaction => {
         case 'play':
             await play(interaction);
             break;
+        case 'search':
+            break;
         case 'pause':
+            await pause(interaction);
             break;
         case 'resume':
+            await resume(interaction);
             break;
         case 'skip':
-            skip(interaction);
+            await skip(interaction);
             break;
         case 'queue':
+            await queue(interaction);
             break;
         case 'clear':
+            await clear(interaction);
             break;
         case 'remove':
             break;
         case 'disconnect':
-            disconnect(interaction);
+            await disconnect(interaction);
             break;
         default:
             await interaction.reply("Unrecognized command, /help for a list of available commands.");
@@ -72,10 +82,13 @@ async function help(interaction) {
     return interaction.reply(helpTxt);
 }
 
+// I AM THE STORM THAT IS APPROACHING   https://www.youtube.com/watch?v=Jrg9KxGNeJY
+// Crying for rain                      https://www.youtube.com/watch?v=0YF8vecQWYs
+// 5 second countdown                   https://www.youtube.com/watch?v=TLwhqmf4Td4
 async function play(interaction) {
     const channel = interaction.member.voice.channel;
     if(!channel) {
-        return interaction.reply("Please join a voice channel first.");
+        return interaction.reply("Please join a voice channel first!");
     }
 
     const connection = joinVoiceChannel({
@@ -85,42 +98,108 @@ async function play(interaction) {
     });
     
     const url = interaction.options.get("url").value;
-    const resource = createAudioResource(await(ytdl(url)), { inputType: StreamType.Opus });
-    const player = createAudioPlayer();
+    const validatation = ytdl.validateURL(url);
+    let timeout;
 
-    if (queue.length == 0) {
-        queue.push(resource);
-        player.play(queue[0]);
-        connection.subscribe(player);
+    if(validatation) {
+        const resource = createAudioResource(await ytdl(url).catch(e => console.log(e)), { filter: 'audioonly', inputType: StreamType.Opus, highWaterMark: 1<<25 }, { highWaterMark: 1 });
+        audioQueue.push(resource);
     } else {
-        queue.push(resource);
+        // TODO: implement keyword search here
+    }
+
+    if (audioQueue.length - 1 == 0) {
+        player.play(audioQueue[0]);
+        connection.subscribe(player);
     }
 
     player.on(AudioPlayerStatus.Idle, () => {
-        queue.shift();
-        if (queue.length > 0) {
-            player.play(queue[0]);
+        audioQueue.shift();
+        if (audioQueue.length > 0) {
+            player.play(audioQueue[0]);
+        } else {
+            timeout = setTimeout(() => {
+                if (client.voice.adapters.size > 0) {
+                    connection.destroy();
+                }
+            }, 30_000);
         }
     });
 
-    return interaction.reply("Now playing - ");
+    player.on(AudioPlayerStatus.Playing, ()=> {
+        clearTimeout(timeout);
+    });
+
+    player.on('error', (error) => {
+        console.log(error);
+        interaction.reply("An error has occurred, please check the console. Skipping...");
+        audioQueue.shift();
+        if (audioQueue.length > 0) {
+            player.play(audioQueue[0]);
+        }
+    });
+
+    if (validatation) {
+        if (audioQueue.length - 1 == 0) {
+            return interaction.reply(`Now playing - [${(await ytdl.getBasicInfo(url)).videoDetails.title}](${url})`);
+        } else {
+            return interaction.reply(`Added to queue - [${(await ytdl.getBasicInfo(url)).videoDetails.title}](${hideLinkEmbed(url)})`);
+        }
+    } else {
+        return interaction.reply(`Now playing - `);
+    }
 }
 
 async function skip(interaction) {
-    
+    if (audioQueue.length == 0) {
+        return interaction.reply("No audio currently playing!");
+    }
+
+    audioQueue.shift();
+    if (audioQueue.length > 0) {
+        player.play(audioQueue[0]);
+
+        return interaction.reply("Skipped!");
+    }
+        
+    // play 1 second of silence to overwrite currently playing audio
+    const resource = createAudioResource('./sounds/silence.mp3');
+    player.play(resource);
+        
+    return interaction.reply("Skipped!");
+}
+
+async function pause(interaction) {
+
+}
+
+async function resume(interaction) {
+
+}
+
+async function queue(interaction) {
+
+}
+
+async function clear(interaction) {
+    if (audioQueue.length > 1) {
+        audioQueue.splice(1, queue.length);
+        return interaction.reply("Cleared queue!");
+    }
+
+    return interaction.reply("Queue is already empty!");
 }
 
 async function disconnect(interaction) {
     const channel = interaction.member.voice.channel;
 
-    const connection = getVoiceConnection(channel.guild.id);
-    if (connection) {
+    if (client.voice.adapters.size > 0) {
+        const connection = getVoiceConnection(channel.guild.id);
         connection.destroy();
-        console.log("Disconnected from channel.");
-        return interaction.reply("Disconnected.");
+        return interaction.reply("Disconnected!");
     }
 
-    return interaction.reply("Not connected in the first place.");
+    return interaction.reply("Not connected in the first place!");
 }
 
 client.login(token);
