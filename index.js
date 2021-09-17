@@ -7,8 +7,7 @@ const ytdl = require('youtube-dl-exec').raw;
 const ytdlcore = require('ytdl-core-discord');
 const ytsr = require('ytsr');
 const ytpl = require('ytpl');
-
-global.AbortController = require('abort-controller');
+const shuffle = require('shuffle-array');
 
 const player = createAudioPlayer();
 const urlList = [];
@@ -35,6 +34,9 @@ client.on('interactionCreate', async interaction => {
         case 'search':
             await search(interaction);
             break;
+        case 'now':
+            await now(interaction);
+            break;
         case 'pause':
             await pause(interaction);
             break;
@@ -47,10 +49,14 @@ client.on('interactionCreate', async interaction => {
         case 'queue':
             await queue(interaction);
             break;
+        case 'shuffle':
+            await shuffleQ(interaction);
+            break;
         case 'clear':
             await clear(interaction);
             break;
         case 'remove':
+            await remove(interaction);
             break;
         case 'disconnect':
             await disconnect(interaction);
@@ -95,18 +101,8 @@ async function help(interaction) {
     }
 }
 
-// I AM THE STORM THAT IS APPROACHING   https://www.youtube.com/watch?v=Jrg9KxGNeJY
-// Crying for rain                      https://www.youtube.com/watch?v=0YF8vecQWYs
-// 5 second countdown                   https://www.youtube.com/watch?v=TLwhqmf4Td4
 async function play(interaction) {
     const input = interaction.options.get("input").value;
-    if (!input.includes("https://www.youtube.com")) {
-        try {
-            return await interaction.reply("Please input a valid Youtube link!");
-        } catch (e) {
-            console.log(`Error while replying in play() (invalid link): ${e}`);
-        }
-    }
 
     const channel = interaction.member.voice.channel;
     if (!channel) {
@@ -147,16 +143,17 @@ async function play(interaction) {
             }
 
             try {
-                const status = urlList.length == 1 ? 'Now playing' : 'Added to queue';
-                const url = input;
+                const isFirst = urlList.length == 1 ? true : false;
+                const status = isFirst? '`Now playing' : '`Added to queue';
+                const url = isFirst ? urlList[0] : urlList[urlList.length - 1];
                 const title = (await ytdlcore.getBasicInfo(url)).videoDetails.title;
         
-                await interaction.reply(`${status} - [${title}](${url})`);
+                await interaction.reply(`${status}\` - [${title}](${isFirst? url : hideLinkEmbed(url)})`);
             } catch (e) {
                 console.log(`Error while replying in play() (no list): ${e}`);
             }
         } catch (e) {
-            console.log(`Error while setting url in play(): ${e}`);
+            console.log(`Error while setting url in play() (no list): ${e}`);
         }
     } else {
         try {
@@ -181,23 +178,23 @@ async function play(interaction) {
                 }
             
                 try {
-                    const status = 'Added playlist';
+                    const status = '`Added playlist to queue';
                     const url = input;
                     const title = playlist.title;
 
-                    await interaction.reply(`${status} - [${title}](${url})`);
+                    await interaction.reply(`${status} (${playlist.items.length} added)\` - [${title}](${url})`);
                 } catch (e) {
                     console.log(`Error while replying in play() (has list): ${e}`);
                 }
             });
         } catch (e) {
-            console.log(`Error while setting playlist in play(): ${e}`);
+            console.log(`Error while setting playlist in play() (has list): ${e}`);
         }
     }
     
-    player.on('stateChange', (oldState, newState) => {
-        console.log(`Audio player transitioned from ${oldState.status} to ${newState.status}`);
-    });
+    // player.on('stateChange', (oldState, newState) => {
+    //     console.log(`Audio player transitioned from ${oldState.status} to ${newState.status}`);
+    // });
 
     player.on(AudioPlayerStatus.Idle, () => {
         urlList.shift();
@@ -238,7 +235,7 @@ async function search(interaction) {
             results.push({ title: s.title, author: s.author.name, url: s.url, timestamp: s.duration });
         });
     } catch (e) {
-        console.log(`Error while searching in search(): ${e}`);
+        console.log(`Error while searching in search() (search): ${e}`);
     }
 
     if (results.length > 0) {
@@ -266,13 +263,49 @@ async function search(interaction) {
     }
 }
 
+async function now(interaction) {
+    if (urlList.length < 1) {
+        try {
+            return await interaction.reply("Not playing any audio!");
+        } catch (e) {
+            console.log(`Error while replying in now() (no audio playing): ${e}`);
+        }
+    }
+
+    try {
+        const channel = client.channels.cache.get(interaction.channelId);
+        const vidDetails = (await ytdlcore.getInfo(urlList[0])).videoDetails;
+        const vidMinute = Math.floor(vidDetails.lengthSeconds / 60);
+        const vidSecond = Math.floor(vidDetails.lengthSeconds - (vidMinute * 60));
+        const nextVidTitle = urlList.length > 1? (await ytdlcore.getBasicInfo(urlList[1])).videoDetails.title : "None";
+        const embed = new MessageEmbed()
+            .setAuthor(vidDetails.title, null, vidDetails.video_url)
+            .setThumbnail(vidDetails.thumbnails[0].url)
+            .addFields(
+                { name: "\u200B", value: `Author: \`${vidDetails.author.name}\`` },
+                { name: "\u200B", value: `Length: \`${vidMinute}:${vidSecond}\`` },
+                { name: "\u200B", value: `Next: \`${nextVidTitle}\`` }
+            );
+            
+        try {
+            await interaction.deferReply();
+            channel.send({ embeds: [embed] });
+            return await interaction.editReply("Now playing");
+        } catch (e) {
+            console.log(`Error while replying in now(): ${e}`);
+        }
+    } catch (e) {
+        console.log(`Error while creating embed in now(): ${e}`);
+    }
+}
+
 async function skip(interaction) {
     player.stop();
         
     try {
         return await interaction.reply("Skipped!");
     } catch (e) {
-        console.log(`Error while replying in queue() (playing: no queue): ${e}`);
+        console.log(`Error while replying in skip(): ${e}`);
     }
 }
 
@@ -301,17 +334,83 @@ async function resume(interaction) {
 }
 
 async function queue(interaction) {
+    const input = interaction.options.get("page")? interaction.options.get("page").value : 1;
+    if (input < 1) {
+        try {
+            return await interaction.reply("Page cannot be less than 1!");
+        } catch (e) {
+            console.log(`Error while replying in queue() (input): ${e}`);
+        }
+    }
+
+    if (urlList.length == 0) {
+        try {
+            return await interaction.reply("No queue to show!");
+        } catch (e) {
+            console.log(`Error while replying in queue() (no queue): ${e}`);
+        }
+    }
+
+    const channel = client.channels.cache.get(interaction.channelId);
+    const embed = new MessageEmbed()
+        .setAuthor(interaction.user.username, interaction.user.displayAvatarURL());
 
     try {
-        return await interaction.reply("Not yet implemented.");
+        const doQueue = async () => {
+            const index = (input - 1) * 10;
+            for(let i = index; i < index + 10; i++) {
+                const url = urlList[i];
+                if (url != null) {
+                    const vidDetails = (await ytdlcore.getBasicInfo(url)).videoDetails;
+                    const data = { title: vidDetails.title, author: vidDetails.author.name, url: vidDetails.video_url };
+            
+                    embed.addField("\u200B", `${i + 1}. [${data.title} by ${data.author}](${data.url})`);
+                }
+            }
+        }
+
+        try {
+            await interaction.deferReply();
+            await doQueue().then(() => {
+                channel.send({ embeds: [embed] });
+                return interaction.editReply("Showing queue:");
+            });
+        } catch (e) {
+            console.log(`Error while replying in queue() (show queue): ${e}`);
+            return interaction.editReply("Error showing queue, please check console!");
+        }
     } catch (e) {
-        console.log(`Error while replying in queue(): ${e}`);
+        console.log(`Error while getting queues in queue(): ${e}`);
     }
+
+}
+
+async function shuffleQ(interaction) {
+    if (urlList.length > 1) {
+        const tempUrl = urlList[0];
+        
+        urlList.shift();
+        shuffle(urlList);
+        urlList.unshift(tempUrl);
+
+        try {
+            return await interaction.reply("Shuffled!");
+        } catch (e) {
+            console.log(`Error while replying in queue() (shuffled): ${e}`);
+        }
+    } else {
+        try {
+            return await interaction.reply("No queue to shuffle!");
+        } catch (e) {
+            console.log(`Error while replying in queue() (no shuffle): ${e}`);
+        }
+    }
+    
 }
 
 async function clear(interaction) {
     if (urlList.length > 1) {
-        urlList.splice(1, urlList.length);
+        urlList.splice(0, urlList.length);
         try {
             return await interaction.reply("Cleared queue!");
         } catch (e) {
@@ -323,6 +422,26 @@ async function clear(interaction) {
         return await interaction.reply("Queue is already empty!");
     } catch (e) {
         console.log(`Error while replying in clear() (no queue): ${e}`);
+    }
+}
+
+async function remove(interaction) {
+    const input = interaction.options.get("x");
+
+    if (urlList.length < input || input < 1) {
+        try {
+            return await interaction.reply("Remove out of range!");
+        } catch (e) {
+            console.log(`Error while replying in remove() (out of range): ${e}`);
+        }
+    }
+
+    urlList.splice(input + 1, 1);
+
+    try {
+        return await interaction.reply("Removed!");
+    } catch (e) {
+        console.log(`Error while replying in remove() (removed): ${e}`);
     }
 }
 
