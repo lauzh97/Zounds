@@ -5,7 +5,7 @@ A music bot for Discord that plays youtube videos in voice channels
 1. Node.js v14 [[download here]](https://nodejs.org/en/)
 2. Discord.js & dependencies 
 ```
-    npm i discord.js @discordjs/builders @discordjs/rest @discordjs/voice discord-api-types  ytdl-core ytdl-core-discord ytsr ytpl ffmpeg-static prism-media abort-controller
+    npm i discord.js @discordjs/builders @discordjs/rest @discordjs/voice discord-api-types youtube-dl ytdl-core ytdl-core-discord ytsr ytpl ffmpeg-static prism-media abort-controller
 ```
 
 ## Important
@@ -30,9 +30,9 @@ Open a terminal in this directory and run <br>
 
 # TODO
 - [x] Basic functionality (/help, send message, connect voice channel)
-- [ ] Play youtube videos (url + auto search with keywords + playlist)
+- [x] Play youtube videos (url + auto search with keywords + playlist)
 - [ ] Search youtube videos (list out videos and take in reply as input)
-- [ ] Pause/Resume
+- [x] Pause/Resume
 - [ ] Queue list (add to queue, view queue, remove from queue)
 - [x] Clear queue
 - [x] Skip currently playing
