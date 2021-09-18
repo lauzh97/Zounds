@@ -80,22 +80,25 @@ async function help(interaction) {
     const embed = new MessageEmbed()
         .setAuthor(interaction.user.username, interaction.user.displayAvatarURL())
         .addFields(
-            { name: "\u200B", value: "**help** - shows this list." },
-            { name: "\u200B", value: "**ping** - Pong!" },
-            { name: "\u200B", value: "**play [url]** - plays the Youtube video as audio in voice channels. " },
-            { name: "\u200B", value: "**search [keyword]** - search Youtube and return 10 results." },
-            { name: "\u200B", value: "**pause** - pause the currently playing audio." },
-            { name: "\u200B", value: "**resume** - resume the currently paused audio." },
-            { name: "\u200B", value: "**skip** - skip the currently playing audio." },
-            { name: "\u200B", value: "**queue** - list all the audio to be played." },
-            { name: "\u200B", value: "**clear** - clear the existing queue." },
-            { name: "\u200B", value: "**remove [x]** - remove the audio in the x position of the queue." },
-            { name: "\u200B", value: "**disconnect** - disconnect the bot from the channel."}
+            { name: "\u200B", value: "**/help** - shows this list." },
+            { name: "\u200B", value: "**/ping** - Pong!" },
+            { name: "\u200B", value: "**/play [url]** - plays the Youtube video as audio in voice channels. " },
+            { name: "\u200B", value: "**/search [keyword]** - search Youtube and return 10 results." },
+            { name: "\u200B", value: "**/now** - show details of currently playing audio." },
+            { name: "\u200B", value: "**/skip** - skip the curretly playing audio." },
+            { name: "\u200B", value: "**/pause** - pause the currently playing audio." },
+            { name: "\u200B", value: "**/resume** - resume the currently paused audio." },
+            { name: "\u200B", value: "**/queue** - show the audio queue." },
+            { name: "\u200B", value: "**/shuffleQ** - shuffle the queue." },
+            { name: "\u200B", value: "**/clear** - clear the existing queue." },
+            { name: "\u200B", value: "**/remove [x]** - remove the audio in the x position of the queue." },
+            { name: "\u200B", value: "**/disconnect** - disconnect the bot from the channel."}
         );
 
     try {
+        await interaction.deferReply();
         channel.send({ embeds: [embed] });
-        return await interaction.reply("Showing help:");
+        return await interaction.editReply("Showing help:");
     } catch (e) {
         console.log(`Error while replying in help(): ${e}`);
     }
@@ -250,13 +253,13 @@ async function search(interaction) {
         channel.send({ embeds: [embed] });
     
         try {
-            return await interaction.reply(`Showing results for "${keyword}`);
+            return await interaction.reply(`Showing results for "\`${keyword}\``);
         } catch (e) {
             console.log(`Error while replying in search() (has results): ${e}`);
         }
     } else {
         try {
-            return await interaction.reply(`No results found for "${keyword}"!`);
+            return await interaction.reply(`No results found for "\`${keyword}"!\``);
         } catch (e) {
             console.log(`Error while replying in search() (no results): ${e}`);
         }
