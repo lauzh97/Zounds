@@ -1,7 +1,7 @@
 const { Client, Intents, MessageEmbed } = require('discord.js');
 const { token } = require('./config.json');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MESSAGES] });
-const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, StreamType, AudioPlayerStatus } = require('@discordjs/voice');
+const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const { hideLinkEmbed } = require('@discordjs/builders');
 const ytdl = require('youtube-dl-exec').raw;
 const ytdlcore = require('ytdl-core-discord');
@@ -147,15 +147,22 @@ async function play(interaction, paramUrl = "") {
             }
 
             try {
+                if (paramUrl == "") {
+                    interaction.deferReply();
+                }
+
                 const isFirst = urlList.length == 1 ? true : false;
-                const status = isFirst ? '`Now playing' : '`Added to queue';
+                const status = isFirst ? 'Now playing' : 'Added to queue';
                 const url = isFirst ? urlList[0] : urlList[urlList.length - 1];
                 const title = (await ytdlcore.getBasicInfo(url)).videoDetails.title;
+                const text = `\`${status}\` - [${title}](${isFirst ? url : hideLinkEmbed(url)})`
+
+                console.log(text);
 
                 if (paramUrl != "") {
-                    await interaction.followUp(`${status}\` - [${title}](${isFirst ? url : hideLinkEmbed(url)})`);
+                    await interaction.followUp(text);
                 } else {
-                    await interaction.reply(`${status}\` - [${title}](${isFirst ? url : hideLinkEmbed(url)})`);
+                    await interaction.editReply(text);
                 }
             } catch (e) {
                 console.log(`Error while replying in play() (no list): ${e}`);
@@ -208,32 +215,6 @@ async function play(interaction, paramUrl = "") {
     //     console.log(`Audio player transitioned from ${oldState.status} to ${newState.status}`);
     // });
 
-    player.on(AudioPlayerStatus.Idle, () => {
-        urlList.shift();
-        if (urlList.length > 0) {
-            const stream = ytdl(urlList[0], {
-                o: '-',
-                q: '',
-                f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
-                r: '100K',
-            }, { stdio: ['ignore', 'pipe', 'ignore'] });
-            const resource = createAudioResource(stream.stdout);
-
-            player.play(resource);
-        }
-    });
-
-    player.on('error', async (error) => {
-        console.log(error);
-        interaction.reply("An error has occurred, please check the console. Skipping...");
-
-        try {
-            await skip();
-        } catch (e) {
-            console.log(`Error while skipping audio in play(): ${e}`);
-        }
-    });
-
     return
 }
 
@@ -279,7 +260,7 @@ async function search(interaction) {
                             const content = collected.first().content;
 
                             if (Number(content) > 0 && Number(content) < 11) {
-                                url = results[Number(content)].url;
+                                url = results[Number(content) - 1].url;
                                 play(interaction, url);
                             } else if (content == "cancel") {
                                 interaction.editReply(`Search results for "\`${keyword}\`" expired.`)
@@ -395,6 +376,7 @@ async function queue(interaction) {
     const channel = client.channels.cache.get(interaction.channelId);
     const embed = new MessageEmbed()
         .setAuthor(`Requested by ${interaction.user.username}`, interaction.user.displayAvatarURL())
+        .setDescription(`${urlList.length} in queue.`)
         .setTimestamp();
 
     try {
@@ -508,5 +490,31 @@ async function disconnect(interaction) {
         console.log(`Error while replying from disconnect() (not in channel): ${e}`);
     }
 }
+
+player.on(AudioPlayerStatus.Idle, () => {
+    urlList.shift();
+    if (urlList.length > 0) {
+        const stream = ytdl(urlList[0], {
+            o: '-',
+            q: '',
+            f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
+            r: '100K',
+        }, { stdio: ['ignore', 'pipe', 'ignore'] });
+        const resource = createAudioResource(stream.stdout);
+
+        player.play(resource);
+    }
+});
+
+player.on('error', async (error) => {
+    console.log(error);
+    interaction.reply("An error has occurred, please check the console. Skipping...");
+
+    try {
+        await skip();
+    } catch (e) {
+        console.log(`Error while skipping audio in play(): ${e}`);
+    }
+});
 
 client.login(token);
