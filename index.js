@@ -108,6 +108,12 @@ async function help(interaction) {
 async function play(interaction, paramUrl = "") {
     const input = paramUrl == ""? interaction.options.get("input").value : paramUrl;
 
+    if (paramUrl == "") {
+        await interaction.reply(`Processing \`${input}\``);
+    } else {
+        await interaction.editReply(`Processing \`${input}\``);
+    }
+
     const channel = interaction.member.voice.channel;
     if (!channel) {
         try {
@@ -147,23 +153,15 @@ async function play(interaction, paramUrl = "") {
             }
 
             try {
-                if (paramUrl == "") {
-                    interaction.deferReply();
-                }
 
                 const isFirst = urlList.length == 1 ? true : false;
                 const status = isFirst ? 'Now playing' : 'Added to queue';
                 const url = isFirst ? urlList[0] : urlList[urlList.length - 1];
                 const title = (await ytdlcore.getBasicInfo(url)).videoDetails.title;
-                const text = `\`${status}\` - [${title}](${isFirst ? url : hideLinkEmbed(url)})`
+                const text = `${status} - [${title}](${isFirst ? url : hideLinkEmbed(url)})`
 
-                console.log(text);
-
-                if (paramUrl != "") {
-                    await interaction.followUp(text);
-                } else {
-                    await interaction.editReply(text);
-                }
+                console.log(`${text}\n`);
+                await interaction.editReply(text);
             } catch (e) {
                 console.log(`Error while replying in play() (no list): ${e}`);
             }
@@ -193,15 +191,11 @@ async function play(interaction, paramUrl = "") {
                 }
 
                 try {
-                    const status = '`Added playlist to queue';
+                    const status = 'Added playlist to queue';
                     const url = input;
                     const title = playlist.title;
 
-                    if (paramUrl != "") {
-                        await interaction.followUp(`${status} (${playlist.items.length} added)\` - [${title}](${url})`);
-                    } else {
-                        await interaction.reply(`${status} (${playlist.items.length} added)\` - [${title}](${url})`);
-                    }
+                    await interaction.editReply(`${status} \`(${playlist.items.length} added)\` - [${title}](${url})`);
                 } catch (e) {
                     console.log(`Error while replying in play() (has list): ${e}`);
                 }
@@ -221,6 +215,8 @@ async function play(interaction, paramUrl = "") {
 async function search(interaction) {
     const keyword = interaction.options.get("keyword").value;
     const results = [];
+    
+    await interaction.reply(`Processing \`${keyword}\``);
 
     try {
         const search = await yts(keyword);
@@ -251,9 +247,9 @@ async function search(interaction) {
         embed.addField("\u200B", `Reply \`1 ~ 10\` to pick from search result, reply \`cancel\` to cancel the request.`);
 
         try {
-            channel.send({ embeds: [embed] });
+            const searchResults = await channel.send({ embeds: [embed] });
 
-            interaction.reply(`Showing results for "\`${keyword}\`"`, { fetchReply: true })
+            interaction.editReply(`Showing results for "\`${keyword}\`"`, { fetchReply: true })
                 .then(() => {
                     channel.awaitMessages({ max: 1, time: 30000, errors: ['time'] })
                         .then((collected) => {
@@ -262,6 +258,7 @@ async function search(interaction) {
                             if (Number(content) > 0 && Number(content) < 11) {
                                 url = results[Number(content) - 1].url;
                                 play(interaction, url);
+                                searchResults.delete();
                             } else if (content == "cancel") {
                                 interaction.editReply(`Search results for "\`${keyword}\`" expired.`)
                                 interaction.followUp("Cancelled!");
