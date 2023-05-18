@@ -1,32 +1,19 @@
 {
   "name": "zounds",
   "version": "1.0.0",
-  "description": "A music bot for Discord that plays youtube videos in voice channels",
+  "description": "",
   "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/lauzh97/Zounds.git"
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Zihao",
+  "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/lauzh97/Zounds/issues"
-  },
-  "homepage": "https://github.com/lauzh97/Zounds#readme",
   "dependencies": {
-    "@discordjs/builders": "^0.6.0",
-    "@discordjs/rest": "^0.1.0-canary.0",
-    "@discordjs/voice": "^0.6.0",
-    "discord-api-types": "^0.23.1",
-    "discord.js": "^13.1.0",
-    "ffmpeg-static": "^4.4.0",
-    "libsodium-wrappers": "^0.7.9",
-    "prism-media": "^1.3.2",
-    "shuffle-array": "^1.0.1",
-    "youtube-dl-exec": "^1.2.6",
-    "yt-search": "^2.10.1",
-    "ytdl-core": "^4.9.1",
-    "ytdl-core-discord": "^1.3.1",
-    "ytpl": "^2.2.3"
+    "@discordjs/voice": "^0.16.0",
+    "discord.js": "^14.11.0",
+    "libsodium-wrappers": "^0.7.11"
+  },
+  "devDependencies": {
+    "eslint": "^8.40.0"
   }
 }
