@@ -7,19 +7,31 @@ module.exports = {
 		.setName('menu')
 		.setDescription('Shows the soundboard menu'),
 	async execute(interaction, mp3List, player) {
-        const row = new ActionRowBuilder()
-        for (const mp3 of mp3List) {
+        const rows = new Array();
+        var row = new ActionRowBuilder()
+        var counter = 0;
+        for (const [i, mp3] of mp3List.entries()) {
+            if (counter >= 5) {
+                counter = 0;
+                rows.push(row);
+                row = new ActionRowBuilder();
+            }
             const button = new ButtonBuilder()
                 .setCustomId(mp3.name)
                 .setLabel(mp3.name)
                 .setStyle(ButtonStyle.Primary);
                 
             row.addComponents(button);
+            counter++;
+
+            if (i === mp3List.length - 1) {
+                rows.push(row);
+            }
         }
 
         const response = await interaction.reply({
             content: `soundboard lmao`,
-            components: [row],
+            components: rows,
             ephemeral: true,
         });
 
