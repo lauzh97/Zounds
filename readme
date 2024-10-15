@@ -1,2 +1,8 @@
 npm install discord.js
 npm install --save-dev eslint
+npm install -g node-gyp
+npm install @discordjs/voice @discordjs/opus sodium-native ffmpeg-static
+npm i @distube/ytdl-core
+
+node deploy-commands.js
+node .
