@@ -1,12 +1,12 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { JoinVoiceChannel } = require('./inner/joinVoiceChannel');
+const { joinVoice } = require('./util/voiceUtil');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('join')
 		.setDescription('join a voice channel!'),
 	async execute(interaction) {
-        let connection = JoinVoiceChannel(interaction);
+        let connection = joinVoice(interaction);
         let replyMsg = "joined channel!";
 
         if (!connection) {

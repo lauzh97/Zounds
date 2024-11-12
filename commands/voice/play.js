@@ -1,7 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { JoinVoiceChannel } = require('./inner/joinVoiceChannel');
-const { createAudioPlayer, createAudioResource } = require('@discordjs/voice');
-const ytdl = require('@distube/ytdl-core');
+const { joinVoice } = require('./util/voiceUtil');
+const { playAudio } = require('./util/playUtil')
+const { AudioPlayerStatus } = require('@discordjs/voice');
+const { addToQueue, getQueue } = require('./util/queueUtil');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -14,9 +15,8 @@ module.exports = {
                 .setRequired(true)
         ),
 	async execute(interaction) {
-        const connection = JoinVoiceChannel(interaction);
+        const connection = joinVoice(interaction);
         const url = interaction.options.getString("url");
-        const player = createAudioPlayer();
         let replyMsg = "playing!";
 
         if (!connection) {
@@ -30,16 +30,25 @@ module.exports = {
             return;
         }
 
-        const ytSource = ytdl(url, {
-            filter : 'audioonly',
-            dlChunkSize: 0,
-        });
-        const audioResource = createAudioResource(ytSource);
-        player.play(audioResource);
-        connection.subscribe(player);
+        addToQueue(url);
 
-        player.on('error', error => {
-            console.error(`Error: ${error.message} with resource ${error.resource.metadata.title}`);
+        if (!global.player || AudioPlayerStatus.Idle == global.player.state.status) {
+            playAudio(connection, getQueue().shift());
+        }
+
+        global.player.on('error', error => {
+            console.error(`AudioPlayer error: ${error.message}`);
+        });
+        
+        // todo: somehow this errors when trying to play second music int the list
+        global.player.on(AudioPlayerStatus.Idle, () => {
+            if (getQueue().length > 0) {
+                playAudio(global.player, connection, getQueue().shift());
+            } else {
+                setTimeout(() => {
+                    connection.destroy();
+                }, 10 * 1000);  // disconnect after idle for 10 seconds
+            }
         });
 
         await interaction.reply({

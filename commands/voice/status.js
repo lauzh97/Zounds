@@ -1,18 +1,15 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { getVoiceConnection } = require('@discordjs/voice');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('status')
-		.setDescription('show bot status!'),
+		.setDescription('for debugging!'),
 	async execute(interaction) {
-        const member = interaction.member.voice.channel;
-        const connection = getVoiceConnection(member.guild.id);
 
-        console.log(connection);
+        console.log(global.player);
 
 		await interaction.reply({
-            content: "Please look into console!",
+            content: "debugging!",
             ephemeral: true
         });
 	},

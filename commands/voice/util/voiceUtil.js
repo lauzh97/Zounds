@@ -1,6 +1,6 @@
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 
-const JoinVoiceChannel = (interaction) => {
+const joinVoice = (interaction) => {
     let member = interaction.member.voice.channel;
     let connection = getVoiceConnection(member.guild.id);
 
@@ -15,4 +15,4 @@ const JoinVoiceChannel = (interaction) => {
     return connection;
 }
 
-module.exports = { JoinVoiceChannel }
+module.exports = { joinVoice }
