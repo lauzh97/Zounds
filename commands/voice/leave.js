@@ -18,8 +18,7 @@ module.exports = {
         }
 
 		await interaction.reply({
-            content: replyMsg,
-            ephemeral: true
+            content: replyMsg
         });
 	},
 };

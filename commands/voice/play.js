@@ -1,13 +1,24 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { joinVoice } = require('./util/voiceUtil');
 const { playAudio } = require('./util/playUtil')
-const { AudioPlayerStatus } = require('@discordjs/voice');
-const { addToQueue, getQueue } = require('./util/queueUtil');
+const { AudioPlayerStatus, createAudioPlayer } = require('@discordjs/voice');
+const { addToQueue, getQueue, addPlaylist, isQueueEmpty } = require('./util/queueUtil');
+const { validatePlaylistURL, validateVideoURL, getURL } = require('yt-stream');
+const { default: YouTube } = require('youtube-sr');
+
+const playIfIdle = async (connection) => {
+    if (AudioPlayerStatus.Idle == global.player.state.status) {
+        if (isQueueEmpty()) return;
+
+        const ytInfo = playAudio(connection, getQueue().shift());
+        return "now playing: " + (await ytInfo).title;
+    }
+}
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('play')
-		.setDescription('play a youtube video!')
+		.setDescription('play some music!')
         .addStringOption(option => 
             option
                 .setName("url")
@@ -18,6 +29,10 @@ module.exports = {
         const connection = joinVoice(interaction);
         const url = interaction.options.getString("url");
         let replyMsg = "playing!";
+
+        if (!global.player) {
+            global.player = createAudioPlayer();
+        }
 
         if (!connection) {
             replyMsg = "failed to join channel!";
@@ -30,30 +45,36 @@ module.exports = {
             return;
         }
 
-        addToQueue(url);
-
-        if (!global.player || AudioPlayerStatus.Idle == global.player.state.status) {
-            playAudio(connection, getQueue().shift());
+        // validate if is playlist
+        const isPlaylist = validatePlaylistURL(url);
+        if (isPlaylist) {
+            YouTube.getPlaylist(url)
+            .then((playlist) => playlist.fetch())
+            .then((playlist) => {
+                const playlistInfo = playlist.videos.map((video) => video.url);
+                addPlaylist(playlistInfo);
+                replyMsg = playIfIdle(connection);
+            })
+            .catch(console.error);
         }
 
-        global.player.on('error', error => {
-            console.error(`AudioPlayer error: ${error.message}`);
-        });
+        // validate if is video
+        const isVideo = validateVideoURL(url);
+        if (!isPlaylist && isVideo) {
+            addToQueue(url);
+            replyMsg = "added to queue!";
+            playIfIdle(connection);
+        }
         
-        // todo: somehow this errors when trying to play second music int the list
+        // play next in queue if AudioPlayer is not playing anything
         global.player.on(AudioPlayerStatus.Idle, () => {
-            if (getQueue().length > 0) {
-                playAudio(global.player, connection, getQueue().shift());
-            } else {
-                setTimeout(() => {
-                    connection.destroy();
-                }, 10 * 1000);  // disconnect after idle for 10 seconds
+            if (!isQueueEmpty()) {
+                playAudio(connection, getQueue().shift());
             }
         });
 
         await interaction.reply({
-            content: replyMsg,
-            ephemeral: true
+            content: replyMsg
         });
 	},
 };

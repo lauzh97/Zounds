@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { getQueue } = require('./util/queueUtil');
 
 module.exports = {
 	data: new SlashCommandBuilder()

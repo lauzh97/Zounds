@@ -17,6 +17,7 @@
     "node-pre-gyp": "^0.17.0",
     "rebuild": "^0.1.2",
     "sodium-native": "^4.2.1",
+    "youtube-sr": "^4.3.11",
     "yt-stream": "^1.7.4"
   },
   "devDependencies": {
