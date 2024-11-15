@@ -1,10 +1,11 @@
 const { SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder } = require('discord.js');
-const { getQueue, isQueueEmpty, addToQueue } = require('./util/queueUtil');
+const { getQueue, isQueueEmpty, addToQueue, clearQueue } = require('./util/queueUtil');
 const { default: YouTube } = require('youtube-sr');
 const { AudioPlayerStatus, createAudioPlayer } = require('@discordjs/voice');
 const { playAudio } = require('./util/playUtil');
 const { joinVoice } = require('./util/voiceUtil');
 const { getURL } = require('yt-stream');
+const { UNABLE_TO_JOIN_CHANNEL } = require('./constant/errMsg');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -17,9 +18,22 @@ module.exports = {
                 .setRequired(true)
         ),
 	async execute(interaction) {
+        await interaction.deferReply();
+
         const connection = joinVoice(interaction);
         const keyword = interaction.options.getString("keyword");
         let replyMsg = "";
+
+        if (!connection) {
+            replyMsg = UNABLE_TO_JOIN_CHANNEL;
+
+            await interaction.editReply({
+                content: replyMsg,
+                ephemeral: true
+            });
+
+            return;
+        }
 
         const videos = await YouTube.search(keyword, {
             limit: 10
@@ -33,22 +47,40 @@ module.exports = {
             select.addOptions(
 				new StringSelectMenuOptionBuilder()
                     .setLabel(video.title)
-                    .setDescription(video.channel.name)
+                    .setDescription("(" + video.durationFormatted + ") - " + video.channel.name)
                     .setValue(String(i))
             );
         })
 
+        select.addOptions(
+            new StringSelectMenuOptionBuilder()
+                .setLabel("Cancel")
+                .setValue("cancel")
+            );
+
         const row = new ActionRowBuilder()
 			.addComponents(select);
 
-		const response = await interaction.reply({
+		const response = await interaction.editReply({
             content: replyMsg,
-			components: [row]
+			components: [row],
+            ephemeral: true
         });
 
         try {
             const responseObj = await response.awaitMessageComponent({time: 60_000});
             const selected = responseObj.values[0];
+
+            if ("cancel" == selected) {
+                replyMsg = "Canceled!";
+
+                await interaction.editReply({ 
+                    content: replyMsg, 
+                    components: []
+                });
+
+                return;
+            }
 
             addToQueue(getURL(videos[Number(selected)].id));
             replyMsg = "added to queue!";
@@ -64,12 +96,6 @@ module.exports = {
                 const ytInfo = playAudio(connection, getQueue().shift());
                 replyMsg = "now playing: " + (await ytInfo).title;
             }
-            
-            global.player.on(AudioPlayerStatus.Idle, () => {
-                if (!isQueueEmpty()) {
-                    playAudio(connection, getQueue().shift());
-                }
-            });
 
             await interaction.editReply({ 
                 content: replyMsg, 

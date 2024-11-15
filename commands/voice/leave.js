@@ -1,13 +1,12 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { getVoiceConnection } = require('@discordjs/voice');
+const { getVoice } = require('./util/voiceUtil');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('leave')
 		.setDescription('leave a voice channel!'),
 	async execute(interaction) {
-        const member = interaction.member.voice.channel;
-        const connection = getVoiceConnection(member.guild.id);
+        const connection = getVoice(interaction);
         let replyMsg;
 
         if (connection) {

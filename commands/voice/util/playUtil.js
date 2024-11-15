@@ -1,14 +1,15 @@
 const ytStream = require('yt-stream')
-const { createAudioResource } = require('@discordjs/voice');
+const { createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
+const { default: YouTube } = require('youtube-sr');
 
 const playAudio = async (connection, url) => {
-    const info = await ytStream.getInfo(url);
-    console.log("preparing audio for: " + info.title);
+    global.nowPlaying = await YouTube.getVideo(url);
+    console.log("preparing audio for: " + global.nowPlaying.title);
 
-    const source = await ytStream.stream(info, {
+    const source = await ytStream.stream(url, {
         type: 'audio'
     }).catch(() => {
-        console.log("YTStream error: unable to stream: " + info.title);
+        console.log("YTStream error: unable to stream: " + global.nowPlaying.title);
     });
 
     const audioResource = createAudioResource(source.stream, {
@@ -24,9 +25,15 @@ const playAudio = async (connection, url) => {
         console.error(`AudioPlayer error: ${error.message}`);
     });
 
-    console.log("now playing: " + info.title);
+    global.player.on(AudioPlayerStatus.Playing, () => {
+        if (global.inactivityTimeout) {
+            clearTimeout(global.inactivityTimeout);
+        }
+    });
 
-    return info;
+    console.log("now playing: " + global.nowPlaying.title);
+
+    return global.nowPlaying;
 }
 
 module.exports = { playAudio }

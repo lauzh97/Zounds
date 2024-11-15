@@ -15,4 +15,9 @@ const joinVoice = (interaction) => {
     return connection;
 }
 
-module.exports = { joinVoice }
+const getVoice = (interaction) => {
+    let member = interaction.member.voice.channel;
+    return getVoiceConnection(member.guild.id);
+}
+
+module.exports = { joinVoice, getVoice }
