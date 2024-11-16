@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');const { token } = require('./config.json');
+const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { btnInteraction } = require('./commands/voice/queue');
 
 const client = new Client({ intents: [
@@ -8,6 +8,8 @@ const client = new Client({ intents: [
 	GatewayIntentBits.GuildMessages,
 	GatewayIntentBits.GuildVoiceStates
 ]});
+
+const token = process.env.TOKEN;
 
 // start load commands
 client.commands = new Collection();
