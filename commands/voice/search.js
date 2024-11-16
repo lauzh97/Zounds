@@ -87,8 +87,6 @@ module.exports = {
             addToQueue(url);
             
             const info = await YouTube.getVideo(url)
-            console.log(info);
-            console.log(url);
             replyMsg = "Added to queue: [" + info.title + "](" + info.url + ")";
 
 
