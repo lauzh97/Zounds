@@ -9,6 +9,8 @@ on:
     branches: [ "main" ]
 
 jobs:
+  call-workflow-passing-data:
+    secrets: inherit
   build:
     runs-on: ubuntu-latest
 
