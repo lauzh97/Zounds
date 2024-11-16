@@ -30,5 +30,9 @@ jobs:
           GUILDID: ${{ secrets.GUILDID }}
           CLIENTID: ${{ secrets.CLIENTID }}
         run: |
+          touch .env
+          echo TOKEN=${{ secrets.TOKEN }} >> .env
+          echo GUILDID=${{ secrets.GUILDID }} >> .env
+          echo CLIENTID=${{ secrets.CLIENTID }} >> .env
           npm install
           node .
