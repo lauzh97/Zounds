@@ -1,6 +1,7 @@
 const { REST, Routes } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const dotenv = require('dotenv');
 
 const commands = [];
 // Grab all the command folders from the commands directory you created earlier
@@ -24,6 +25,7 @@ for (const folder of commandFolders) {
 }
 
 // Construct and prepare an instance of the REST module
+dotenv.config();
 const token = process.env.TOKEN;
 const guildId = process.env.GUILDID;
 const clientId = process.env.CLIENTID;
