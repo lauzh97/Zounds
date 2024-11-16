@@ -9,11 +9,9 @@ on:
     branches: [ "main", "Oct2024" ]
 
 jobs:
-  call-workflow-passing-data:
-    uses: ./.github/workflows/deploy-github.yml
-    secrets: inherit
   build:
     runs-on: ubuntu-latest
+    environment: github-pages
 
     strategy:
       matrix:
