@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Build
+      - name: Run
         env:
           TOKEN: ${{ secrets.TOKEN }}
           GUILDID: ${{ secrets.GUILDID }}
