@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder } = require('discord.js');
-const { getQueue, isQueueEmpty, addToQueue, clearQueue } = require('./util/queueUtil');
+const { getQueue, isQueueEmpty, addToQueue } = require('./util/queueUtil');
 const { default: YouTube } = require('youtube-sr');
 const { AudioPlayerStatus, createAudioPlayer } = require('@discordjs/voice');
 const { playAudio } = require('./util/playUtil');
@@ -87,6 +87,8 @@ module.exports = {
             addToQueue(url);
             
             const info = await YouTube.getVideo(url)
+            console.log(info);
+            console.log(url);
             replyMsg = "Added to queue: [" + info.title + "](" + info.url + ")";
 
 
