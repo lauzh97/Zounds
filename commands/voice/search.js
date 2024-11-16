@@ -82,8 +82,13 @@ module.exports = {
                 return;
             }
 
-            addToQueue(getURL(videos[Number(selected)].id));
-            replyMsg = "added to queue!";
+            const url = getURL(videos[Number(selected)].id)
+
+            addToQueue(url);
+            
+            const info = await YouTube.getVideo(url)
+            replyMsg = "Added to queue: [" + info.title + "](" + info.url + ")";
+
 
             if (!global.player) {
                 global.player = createAudioPlayer();
@@ -92,9 +97,11 @@ module.exports = {
             // play next in queue if AudioPlayer is not playing anything
             if (AudioPlayerStatus.Idle == global.player.state.status) {
                 if (isQueueEmpty()) return;
+
+                const url = getQueue().shift();
         
-                const ytInfo = playAudio(connection, getQueue().shift());
-                replyMsg = "now playing: " + (await ytInfo).title;
+                const ytInfo = playAudio(connection, url);
+                replyMsg = "now playing: [" + (await ytInfo).title + "](" + url + ")";
             }
 
             await interaction.editReply({ 

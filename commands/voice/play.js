@@ -11,9 +11,11 @@ const playIfIdle = async (connection) => {
     if (AudioPlayerStatus.Idle == global.player.state.status) {
         if (isQueueEmpty()) return;
 
-        const currentInfo = playAudio(connection, getQueue().shift());
+        const url = getQueue().shift();
 
-        return "Added to queue: " + (await currentInfo).title;
+        const currentInfo = playAudio(connection, url);
+
+        return "Now playing: [" + (await currentInfo).title + "](" + url + ")";
     }
 }
 
@@ -32,7 +34,7 @@ module.exports = {
 
         const connection = joinVoice(interaction);
         const url = interaction.options.getString("url");
-        let replyMsg = "playing!";
+        let replyMsg = "";
 
         if (!global.player) {
             global.player = createAudioPlayer();
@@ -67,17 +69,14 @@ module.exports = {
         // validate if is playlist
         const isPlaylist = validatePlaylistURL(url);
         if (isPlaylist) {
-            YouTube.getPlaylist(url)
+            await YouTube.getPlaylist(url)
             .then((playlist) => playlist.fetch())
-            .then((playlist) => {
+            .then(async (playlist) => {
                 const playlistInfo = playlist.videos.map((video) => video.url);
                 addPlaylist(playlistInfo);
 
-                replyMsg = playIfIdle(connection);
-        
-                if (!replyMsg) {
-                    replyMsg = "Added playlist to queue";
-                }
+                await playIfIdle(connection);
+                replyMsg = "Added playlist to queue (" + getQueue().length + " added)";
             })
             .catch(console.error);
         }
@@ -97,7 +96,8 @@ module.exports = {
             replyMsg = await playIfIdle(connection);
     
             if (!replyMsg) {
-                replyMsg = "Added to queue: " + (await YouTube.getVideo(finalURL)).title;
+                const info = await YouTube.getVideo(finalURL)
+                replyMsg = "Added to queue: [" + info.title + "](" + info.url + ")";
             }
         }
 

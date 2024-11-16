@@ -2,8 +2,19 @@ const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRow
 const { getQueue } = require('./util/queueUtil');
 const { default: YouTube } = require('youtube-sr');
 
+const sortQueue = ( a, b ) => {
+    if ( a.sortId < b.sortId ){
+      return -1;
+    }
+    if ( a.sortId > b.sortId ){
+      return 1;
+    }
+    return 0;
+  }
+
 const populateQueue = async () => {
     let queueFields = [];
+    let getInfoPromises = [];
 
     for(let i=0; i<10; i++) {
         const startIndex = global.selectedPage * 10;
@@ -14,16 +25,30 @@ const populateQueue = async () => {
         }
 
         if (queueItem) {
-            await YouTube.getVideo(queueItem)
-            .then((info) => {
-                queueFields.push(
-                    { name: (startIndex + i + 1) + ". " + info.title, value: info.channel.name }
-                );
-            })
+            getInfoPromises.push(
+                YouTube.getVideo(queueItem)
+                    .then((info) => {
+                        queueFields.push(
+                            { 
+                                name: (startIndex + i + 1) + ". " + info.title, 
+                                value: "(" + info.durationFormatted + ")" + " [YouTube :link:](" + info.url + ") by " + info.channel.name, 
+                                sortId: (startIndex + i + 1) 
+                            }
+                        );
+                    })
+            );
         }
     }
+
+    await getInfoPromises.reduce(async (acc, currentPromise) => {
+        // Wait for previous promises to resolve
+        const results = await acc;
+        // Add current promise result
+        return [...results, await currentPromise];
+        // Initial accumulator is an empty resolved promise
+    }, Promise.resolve([]));
     
-    return queueFields;
+    return queueFields.sort(sortQueue);
 }
 
 const queueFunc = async (interaction) => {
@@ -68,10 +93,10 @@ const queueFunc = async (interaction) => {
     const row = new ActionRowBuilder()
         .addComponents(prevBtn, nextBtn, closeBtn);
 
-    await interaction.editReply({
-        embeds: [queueEmbed],
-        components: [row]
-    });
+    return {
+        queueEmbed: queueEmbed,
+        row: row
+    }
 }
 
 module.exports = {
@@ -80,11 +105,15 @@ module.exports = {
 		.setDescription('display the current music queue!'),
 	async execute(interaction) {
         await interaction.deferReply();
-        queueFunc(interaction);
+        const queue = await queueFunc(interaction);
+
+        await interaction.editReply({
+            content: "",
+            embeds: [queue.queueEmbed],
+            components: [queue.row]
+        });
 	},
     async btnInteraction(interaction) {
-        await interaction.deferReply();
-
         try {
             if ("prevBtn" === interaction.customId) {
                 global.selectedPage--;
@@ -93,7 +122,7 @@ module.exports = {
             } else if ("closeBtn" === interaction.customId) {
                 global.selectedPage = 0;
 
-                await interaction.editReply({
+                await interaction.update({
                     content: 'Closed queue!',
                     embeds: [],
                     components: [],
@@ -101,20 +130,25 @@ module.exports = {
 
                 return;
             } else {
-                await interaction.editReply({ 
+                await interaction.update({ 
                     content: 'Queue error! unknown button! How the fk did you managed that?', 
                     components: [],
                     ephemeral: true
                 });     
             }
 
-            await interaction.editReply({
-                content: "Loading page, this will take some time...",
-                embeds: [],
+            await interaction.update({
+                content: "Loading page, this might take some time...",
                 components: []
             });
 
-            queueFunc(interaction);
+            const queue = await queueFunc(interaction);
+            
+            await interaction.editReply({
+                content: "",
+                embeds: [queue.queueEmbed],
+                components: [queue.row]
+            });
         } catch (e) {
             console.log(e);
             await interaction.editReply({ 

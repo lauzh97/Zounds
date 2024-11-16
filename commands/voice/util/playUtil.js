@@ -7,7 +7,8 @@ const playAudio = async (connection, url) => {
     console.log("preparing audio for: " + global.nowPlaying.title);
 
     const source = await ytStream.stream(url, {
-        type: 'audio'
+        type: 'audio',
+        quality: 'high'
     }).catch(() => {
         console.log("YTStream error: unable to stream: " + global.nowPlaying.title);
     });
